@@ -1,0 +1,19 @@
+k3os:
+  data_sources:
+    - digitalocean
+run_cmd:
+  - sudo ruby /etc/configure-digitalocean-networking.rb
+write_files:
+  - path: /etc/configure-digitalocean-networking.sh
+    content: |
+      ifconfig eth1 down
+      ip route add 169.254.169.254 dev eth0
+      sleep 5
+
+      metadata=$( curl http://169.254.169.254/metadata/v1.json )
+      network_interface=$( echo "${metadata}" | jq '.interfaces.public[0]' )
+
+      ipv4_details=$( echo "${network_interface}" | jq -r '"\(.ipv4.ip_address) \(.ipv4.netmask) \(.ipv4.gateway)"' )
+      connmanctl config eth0 --ipv4 manual $ipv4_details
+      ipv6_details=$( echo "${network_interface}" | jq -r '"\(.ipv6.ip_address) \(.ipv6.cidr) \(.ipv6.gateway)"' )
+      connmanctl config eth0 --ipv6 manual $ipv6_details
